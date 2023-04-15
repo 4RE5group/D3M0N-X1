@@ -76,38 +76,66 @@ def write_rfid():
 		
 #read_rfid()
 
+def getSetting(name):
+	result = "Setting not found"
+	with open("/D3M0N_settings.txt", "r") as fp:
+			temp = fp.read().split("""
+""")
+			for line in temp:
+				if line.startswith(name+": "):
+					result = line.replace(name+": ", "")
+					print("FOUND "+name+" value "+result)
+	return result
+
+def setSetting(name, value):
+	settingsfinal=""
+	with open("/D3M0N_settings.txt", "r") as fp:
+			settings = fp.read().split("\n")
+			for line in settings:
+				if line.startswith(name+": "):
+					settingsfinal+="\n"+name+": "+value
+				else:
+					settingsfinal+="\n"+line
+	with open("/D3M0N_settings.txt", "w") as fp:
+			fp.wite(settingsfinal)
 
 def main_screen():
 	lcd_columns = 16
 	lcd_rows = 2
 
-	i2c = busio.I2C(board.GP15, board.GP14)
+	i2c = busio.I2C(board.GP9, board.GP8)
+	#i2c = board.STEMMA_I2C()
 	#lcd = Character_LCD_RGB_I2C(i2c, lcd_columns, lcd_rows)
 	lcd = character_lcd.Character_LCD_I2C(i2c, lcd_columns, lcd_rows)
 
 	# Turn backlight on
-	lcd.backlight = False
+	#lcd.backlight = True
 	# Print a two line message
 	lcd.message = "Hello\nCircuitPython"
 	
 	time.sleep(5)
 	lcd.clear()
 
-main_screen()
+#main_screen()
 
 
 # set access point credentials
-ap_ssid = "never gonna give u up"
-ap_password = "password"
+ap_ssid = getSetting("ap_ssid")
+ap_password = getSetting("ap_password")
+ipv4 =  ipaddress.IPv4Address("192.168.4.1")
+
 
 # start access point
-wifi.radio.start_ap(ssid=ap_ssid, password=ap_password)
+try:
+	wifi.radio.start_ap(ssid=ap_ssid, password=ap_password)
+except NotImplementedError:
+	print("stopped")
+
 
 # print access point settings
-print("Access point created with SSID: {}, password: {}".format(ap_ssid, ap_password))
+print("Access point created with SSID: "+ap_ssid+", password: "+ap_password)
 
-print("My IP address is", str(ipv4))
-ipv4 =  ipaddress.IPv4Address(wifi.radio.ipv4_address_ap)
+print("My IP address is "+str(ipv4))
 
 # create http server
 server = HTTPServer(socketpool.SocketPool(wifi.radio))
@@ -117,13 +145,24 @@ def base(request):
 	response = HTTPResponse(request)
 	if request.path == "/":
 		with open("/index.html", "r") as fp:
-			result = fp.readline()
+			result = fp.read()
+	elif request.path == "/stop":
+		print("stopped")
+		wifi.radio.stop_ap()
+	elif request.path.startswith("/api/set/"):
+		temp=request.path.replace("/api/set/", "").split("/")
+		name=temp[0]
+		value=temp[1]
+		setSetting(name, value)
+		result="Successfully set '"+name+"' to '"+value+"'"
 	elif os.path.isfile(request.path):
 		with open(request.path, "r") as fp:
-			result = fp.readline()
+			result = fp.read().replace("{ap_ssid}", ap_ssid)
+			result = result.replace("{ap_password}", ap_password)
 	else:
 		result = "404: not found :p"  
 	response.send(result, content_type="text/html")
+	print("Requested "+request.path)
 
 print(f"Listening on http://"+str(ipv4)+":80")
 server.serve_forever(str(ipv4), port=80) # never returns

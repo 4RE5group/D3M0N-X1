@@ -1,0 +1,2 @@
+ap_ssid: D3M0N-X1
+ap_password: changeme
