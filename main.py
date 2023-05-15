@@ -1,69 +1,52 @@
 import network
 from machine import Pin,PWM
 from time import sleep
-from irrecvdata import irGetCMD
 from machine import Pin, SoftSPI, I2C
 from I2C_LCD import I2CLcd
 import socket
 import uos
 import _thread
-from ir_tx import *
 import micropython
-from ir_tx.nec import NEC
 import uasyncio as asyncio
 import usocket
-from IRcontroller import IRcontroller
 from settings import settings_module
 import os
-
+import gc
+gc.collect()
 
 global lastdisplay2
 lastdisplay2=""
 
 def AP_Setup(ssidAP,passwordAP):
 	ap_if.disconnect()
-	ap_if.ifconfig([local_IP,gateway,subnet,dns])
+	ap_if.ifconfig([settings_module.getSetting("web_address"),gateway,subnet,dns])
 	print("Setting AP... ")
-	ap_if.config(essid=ssidAP, password=passwordAP)
 	ap_if.active(True)
+	ap_if.config(essid=ssidAP, password=passwordAP)
 	print('Success, IP address:', ap_if.ifconfig())
 	print("Setup End\n")
 
-
-def deauth(_ap,_client,type,reason,sta_if):
-    packet=bytearray([0xC0,0x00,0x00,0x00,0xBB,0xBB,0xBB,0xBB,0xBB,0xBB,0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,0x00, 0x00,0x01, 0x00])
-    for i in range(0,6):
-        packet[4 + i] =_client[i]
-        packet[10 + i] = packet[16 + i] =_ap[i]
-    packet[0] = type;
-    packet[24] = reason
-    result=sta_if.freedom(packet)
-    if result==0:
-        sleep(0.01)
-        return True
-    else:
-        return False
+async def webserver_main():
+    asyncio.create_task(webserver())
+    #webserver()
 
 async def webserver():
-	s = usocket.socket(usocket.AF_INET, usocket.SOCK_STREAM)
-	s.setsockopt(usocket.SOL_SOCKET, usocket.SO_REUSEADDR, 1)
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   #creating socket object
 	s.bind(('', 80))
 	s.listen(5)
-	print("Listening on 0.0.0.0:80")
-	
-	running=True
-	
-	while running:
+	while True:
 		conn, addr = s.accept()
-		print('Got a connection from %s' % str(addr))
+		await print('Got a connection from %s' % str(addr))
 		request = conn.recv(1024)
-		response = "<html><body>test</body></html>"
-		#request.decode('utf-8').split('\n')[0]
-		await conn.send('HTTP/1.1 200 OK\n')
-		await conn.send('Content-Type: text/html\n')
-		#conn.send('Connection: close\n\n')
-		await conn.sendall(response)
-		conn.close()
+		path = str(request).split(" HTTP")[0]
+		print("path: "+path)
+		try:
+			with open(settings_module.getSetting("web_path")+path, "r") as fp:
+				response = fp.read()
+		except:
+			response = "<h2>404: not found</h2>"
+		await conn.send(response)
+		await conn.close()
 
 
 i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
@@ -79,37 +62,11 @@ def display(text, line, middle=False, lastdisplay=lastdisplay2):
 		lcd.putstr(text)
 	lastdisplay=text
 
-def update_menu(menu):
-	if menu == 0:
-		menu = 1
-	if menu == 1:
-		lcd.clear()
-		lcd.putstr(">RFID           ")
-		lcd.putstr(" Infrared       ")
-	if menu == 2:
-		lcd.clear();
-		lcd.putstr(" RFID           ")
-		lcd.putstr(">Infrared       ")
-	if menu == 3:
-		lcd.clear()
-		lcd.putstr(">Wifi           ")
-		lcd.putstr(" Keyboard hack  ")
-	if menu == 4:
-		lcd.clear()
-		lcd.putstr(" Wifi           ")
-		lcd.putstr(">Keyboard hack  ")
-	if menu == 5:
-		lcd.clear()
-		lcd.putstr(">About           ")
-		lcd.putstr("                 ")
-	if menu == 6:
-		menu = 5
-
 def keylogger():
 	while True:
-	  cmd = sys.stdin.read(1)
-	  if cmd == 'a':
-		print("uwu")
+		cmd = sys.stdin.read(1)
+		if cmd == 'a':
+			print("uwu")
 def bad_usb():
 	print("bad usb")
 
@@ -156,49 +113,6 @@ def selectoption(menu):
 		except:
 			pass
 		return
-	if menu == 2:
-		lcd.clear();
-		display("Infrared", 0, True)
-		display("waiting signal", 0, True)
-		recvPin = irGetCMD(15)
-		
-		try:
-			finalvalue=None
-			while True:
-				value = recvPin.ir_read()
-				if value:
-					finalvalue=value
-					display("Data: "+value, 1)
-				if finalvalue:
-					data = hex_to_bytes(finalvalue)
-					tx.send(data)
-					print("sent")
-		except Exception as e:
-			print(e)
-	if menu == 3:
-		lcd.clear()
-		display("WIFI", 0, True)
-		display(" > Deauth     ", 1)
-		menu2=1
-		sleep(1)
-		while True:
-			if not button_up.value() and menu2==1:
-				return
-			elif not button_down.value() and not menu2==4:
-				menu2=menu2+1
-				update_menu_wifi(menu2)
-				while not button_down.value():
-					sleep(0)
-			elif not button_up.value() and not menu2==1:
-				menu2=menu2-1
-				update_menu_wifi(menu2)
-				while not button_up.value():
-					sleep(0)
-			elif not button_ok.value():
-				selectoption_wifi(menu2)
-				update_menu_wifi(menu2)
-				while not button_ok.value():
-					sleep(0)
 	if menu == 4:
 		lcd.clear()
 		display("Keyboard hacks", 0, True)
@@ -257,14 +171,13 @@ def selectoption(menu):
 ssidAP = settings_module.getSetting("ap_ssid")
 passwordAP = settings_module.getSetting("ap_password")
 
-local_IP = '192.168.4.1'
 gateway = '192.168.1.1'
 subnet  = '255.255.255.0'
 dns = '8.8.8.8'
 
-button_up = Pin(20, Pin.IN, Pin.PULL_UP)	 
-button_ok = Pin(19, Pin.IN, Pin.PULL_UP)	
-button_down = Pin(18, Pin.IN, Pin.PULL_UP)	
+button_up = Pin(20, Pin.IN, Pin.PULL_UP)
+button_ok = Pin(19, Pin.IN, Pin.PULL_UP)
+button_down = Pin(18, Pin.IN, Pin.PULL_UP)
 
 
 # main display
@@ -279,9 +192,8 @@ except:
 	ap_if.disconnect()
 
 try:
-	print("done")
-	#web = webserver()
-	#task = asyncio.create_task(web)
+	print("starting webserver")
+	#webserver()
 	#asyncio.run(webserver())
 except Exception as e:
 	lcd.clear()
@@ -290,7 +202,7 @@ except Exception as e:
 
 
 
-sleep(2)
+sleep(float(settings_module.getSetting("startup_time")))
 lcd.clear()
 
 import sys
@@ -319,6 +231,15 @@ if len(modulesname) > 0:
 	while True:
 		if not button_down.value() and not menu+1==len(modulesname):
 			menu=menu+1
+			
+			if (menu % 2) == 0:
+				#pair
+				Firstline=True
+				print("menu: "+str(menu)+" is pair")
+			elif (menu % 2) == 1:
+				#impair
+				Firstline=False
+				print("menu: "+str(menu)+" is impair")
 			
 			
 			#print("menu: "+str(menu)+"/total: "+str(len(modulesname)))
@@ -391,3 +312,4 @@ if len(modulesname) > 0:
 				Firstline=True
 else:
 	display("No modules", 0)
+
