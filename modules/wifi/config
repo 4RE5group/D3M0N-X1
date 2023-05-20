@@ -1,2 +1,4 @@
 name: WIFI
 classname: wifi_module
+top: 0
+bottom: 0

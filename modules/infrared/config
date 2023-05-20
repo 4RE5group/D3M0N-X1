@@ -1,2 +1,4 @@
 name: INFRARED
 classname: infrared_module
+top: 0
+bottom: 0

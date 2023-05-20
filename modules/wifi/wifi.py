@@ -50,11 +50,11 @@ class wifi_module(object):
 		if menu == -1:
 			menu = 0
 		if menu == 0:
-			self.display(self," > Kill wifi    ", 1)
+			self.display(self," > Deauth       ", 1)
 		if menu == 1:
-			self.display(self," > Find wifi pwd", 1)
+			self.display(self," > Get password ", 1)
 		if menu == 2:
-			self.display(self," > other        ", 1)
+			self.display(self," > MITM         ", 1)
 		if menu == 3:
 			menu = 4
 	
@@ -82,7 +82,7 @@ class wifi_module(object):
 					break
 		if menu == 1:
 			self.lcd.clear()
-			self.display(self,"Find wifi pwd", 0, True)
+			self.display(self,"Get password", 0, True)
 			a=0
 			totaltry="500"
 			
@@ -169,8 +169,30 @@ class wifi_module(object):
 			return
 		if menu == 2:
 			self.lcd.clear()
-			self.display(self,"uwu2 ", 0)
-			self.display(self,"uwu2 ", 1)
+			self.display(self,"MITM ", 0, True)
+			s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.htons(3))
+			s.bind(("eth0", 0))
+			
+			wlan_sta = network.WLAN(network.STA_IF)
+			wlan_sta.active(True)
+			wlan_sta.connect(ssid, pwd)
+			local_mac = wlan_sta.config('mac')
+			
+			ARP_FRAME = [
+				pack('!H', 0x0001), # HRD
+				pack('!H', 0x0800), # PRO
+				pack('!B', 0x06), # HLN
+				pack('!B', 0x04), # PLN 
+				pack('!H', 0x0001), # OP
+				pack('!6B', *local_mac), # SHA
+				pack('!4B', *local_ip), # SPA
+				pack('!6B', *(0x00,)*6), # THA
+				pack('!4B', *dest_ip), # TPA
+			]
+			print(ARP_FRAME)
+			
+			
+			s.send(packet)
 			
 	def display(self, text, line, middle=False, lastdisplay=lastdisplay2):
 		if middle:

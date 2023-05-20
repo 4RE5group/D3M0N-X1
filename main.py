@@ -12,10 +12,25 @@ import usocket
 from settings import settings_module
 import os
 import gc
+
+
 gc.collect()
 
 global lastdisplay2
 lastdisplay2=""
+
+
+# /!\ check https://www.youtube.com/watch?v=l254lxm78I4 for cicruitpython&micropython
+
+#import usb_hid
+#from adafruit_hid.keyboard import Keyboard
+#from adafruit_hid.keyboard_layout_us import KeyboardLayoutUS
+#from adafruit_hid.keycode import Keycode
+
+#kbd = Keyboard(usb_hid.device)
+#layout = KeyboardLayout(kbd)
+#layout.write(Keycode.A)
+
 
 def AP_Setup(ssidAP,passwordAP):
 	ap_if.disconnect()
@@ -91,13 +106,6 @@ def hex_to_bytes(hex_code):
 
 	return bytes
 
-def sendIR(timings, dbgOutput = ''):
-	print(dbgOutput)
-	sender.play(timings)
-    
-	nec = NEC(irPin)
-	nec.transmit(1, 2)  # address == 1, data == 2
-
 def selectoption(menu):
 	if menu == 1:
 		lcd.clear()
@@ -113,59 +121,14 @@ def selectoption(menu):
 		except:
 			pass
 		return
-	if menu == 4:
-		lcd.clear()
-		display("Keyboard hacks", 0, True)
-		display(" > Keylogger    ", 1)
-		menu2=1
-		sleep(1)
-		while True:
-			if not button_up.value() and menu2==1:
-				return
-			elif not button_down.value() and not menu2==2:
-				menu2=menu2+1
-				if menu2==1:
-					display(" > Keylogger    ", 1)
-				else:
-					display(" > Bad USB      ", 1)
-				while not button_down.value():
-					sleep(0)
-			elif not button_up.value() and not menu2==1:
-				menu2=menu2-1
-				if menu2==1:
-					display(" > Keylogger    ", 1)
-				else:
-					display(" > Bad USB      ", 1)
-				while not button_up.value():
-					sleep(0)
-			elif not button_ok.value():
-				if menu2==1:
-					keylogger()
-					display(" > Keylogger    ", 1)
-				else:
-					bad_usb()
-					display(" > Bad USB      ", 1)
-				while not button_ok.value():
-					sleep(0)
-	if menu == 5:
-		lcd.clear()
-		about_text = "D3M0N X1, is made by duckpvpteam, duckpvpteam.com"
-		aboutchars=list(about_text)
-		display("About", 0, True)
-		i=0
-		
-		while button_ok.value():
-			try:
-				finalvar=aboutchars[i]+aboutchars[i+1]+aboutchars[i+2]+aboutchars[i+3]+aboutchars[i+4]+aboutchars[i+5]+aboutchars[i+6]+aboutchars[i+7]+aboutchars[i+8]+aboutchars[i+9]+aboutchars[i+10]+aboutchars[i+11]+aboutchars[i+12]+aboutchars[i+13]+aboutchars[i+14]+aboutchars[i+15]
-				i=i+1
-				display(finalvar, 1)
-				sleep(0.5)
-			except:
-				i=0
-		print("finished")
-		return
 
-
+def sort_list(list1, list2):
+ 
+    zipped_pairs = zip(list2, list1)
+ 
+    z = [x for _, x in sorted(zipped_pairs)]
+ 
+    return z
 
 # vars definition
 ssidAP = settings_module.getSetting("ap_ssid")
@@ -204,21 +167,56 @@ except Exception as e:
 
 sleep(float(settings_module.getSetting("startup_time")))
 lcd.clear()
-
 import sys
 
 
 modulesname=[]
 modulesclass=[]
+topones=[]
+bottomones=[]
+topones2=[]
+bottomones2=[]
+topsvaluesss=[]
+bottomsvaluesss=[]
 for filename in os.listdir("modules"):
 	f = "modules/"+filename
 	try:
 		os.stat(f)
-		modulesname.append(settings_module.getSetting("name", "modules/"+filename+"/config"))
-		modulesclass.append(settings_module.getSetting("classname", "modules/"+filename+"/config"))
+		topvalue=int(settings_module.getSetting("top", "modules/"+filename+"/config"))
+		bottomvalue=int(settings_module.getSetting("bottom", "modules/"+filename+"/config"))
+		
+		if topvalue == 0 and bottomvalue == 0:
+			modulesname.append(settings_module.getSetting("name", "modules/"+filename+"/config"))
+			modulesclass.append(settings_module.getSetting("classname", "modules/"+filename+"/config"))
+		elif topvalue == 0 and not bottomvalue == 0:
+			bottomones.append(settings_module.getSetting("name", "modules/"+filename+"/config"))
+			bottomones2.append(settings_module.getSetting("classname", "modules/"+filename+"/config"))
+			bottomsvaluesss.append(bottomvalue)
+		elif not topvalue == 0 and bottomvalue == 0:
+			topones.append(settings_module.getSetting("name", "modules/"+filename+"/config"))
+			topones2.append(settings_module.getSetting("classname", "modules/"+filename+"/config"))
+			topsvaluesss.append(topvalue)
+		else:
+			modulesname.append(settings_module.getSetting("name", "modules/"+filename+"/config"))
+			modulesclass.append(settings_module.getSetting("classname", "modules/"+filename+"/config"))
 		sys.path.append("modules/"+filename+"/")
 	except OSError:
 		continue
+if not len(topones)==0:
+	topones = list(reversed(sort_list(topones, topsvaluesss)))
+	topones2 = list(reversed(sort_list(topones2, topsvaluesss)))
+if not len(bottomones)==0:
+	bottomones = list(sort_list(bottomones, bottomsvaluesss))
+	bottomones2 = list(sort_list(bottomones2, bottomsvaluesss))
+
+modulesname=topones+modulesname+bottomones
+modulesclass=topones2+modulesclass+bottomones2
+print("topsvaluesss: "+str(topsvaluesss))
+print("top: "+str(topones))
+print("---------------------------------")
+print("bottomsvaluesss: "+str(bottomsvaluesss))
+print("bottom: "+str(bottomones))
+
 
 if len(modulesname) > 0:
 	display("> "+modulesname[0][0:14], 0)
@@ -312,4 +310,3 @@ if len(modulesname) > 0:
 				Firstline=True
 else:
 	display("No modules", 0)
-

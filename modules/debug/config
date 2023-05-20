@@ -1,0 +1,4 @@
+name: DEBUG
+classname: debug_module
+top: 0
+bottom: 2

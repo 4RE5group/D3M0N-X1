@@ -17,11 +17,22 @@ class settings_module:
 		self.button_ok = Pin(19, Pin.IN, Pin.PULL_UP)	
 		self.button_down = Pin(18, Pin.IN, Pin.PULL_UP)
 	
-	def getSettingsLength(file="D3M0N_settings.txt"):
-		settingslist = []
-		settingsvalues = []
+	def deleteSetting(name, file="D3M0N_settings.txt"):
+		lines = ""
 		with open("/"+file, "r") as fp:
-			temp = fp.read().split("\r\n")
+			temp = fp.read().split("\n")
+			for line in temp:
+				if ": " in line:
+					foundname = line.split(": ")[0]
+					if not name==foundname:
+						lines=lines+line+"\n"
+			fp.write(lines)
+			fp.close()
+		return len(temp)
+	
+	def getSettingsLength(file="D3M0N_settings.txt"):
+		with open("/"+file, "r") as fp:
+			temp = fp.read().split("\n")
 			fp.close()
 		return len(temp)
 	
@@ -29,13 +40,13 @@ class settings_module:
 		settingslist = []
 		settingsvalues = []
 		with open("/"+file, "r") as fp:
-			temp = fp.read().split("\r\n")
+			temp = fp.read().split("\n")
 			for line in temp:
 				if ": " in line:
 					name = line.split(": ")[0]
 					value = line.split(": ")[1]
-					settingslist.append(name)
-					settingsvalues.append(value)
+					settingslist.append(name.replace("\r", ""))
+					settingsvalues.append(value.replace("\r", ""))
 			fp.close()
 		return settingslist, settingsvalues
 	

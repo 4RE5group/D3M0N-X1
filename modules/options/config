@@ -1,2 +1,4 @@
 name: CONFIG
 classname: config_module
+top: 0
+bottom: 1

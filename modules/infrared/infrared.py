@@ -24,25 +24,23 @@ class infrared_module(object):
 		#sendIR(dataOn, 'on')
 		tx = IRcontroller(21)
 		
-		nec = NEC(Pin(21, Pin.OUT, value = 0))
-		nec.transmit(1, 2)  # address == 1, data == 2
-		
 		menu=0
 		i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
 		devices = i2c.scan()
 		self.lcd = I2CLcd(i2c, 0x3f, 2, 16)
 		self.lcd.clear()
 		
-		self.display(self,"INFRARED", 0, True)
 		self.updatemenu(self, menu)
 		
 		while True:
+			if menu==0 and not self.button_up.value():
+				break
 			if not self.button_up.value() and not menu==0:
 				menu=menu-1
 				self.updatemenu(self, menu)
 				while not self.button_up.value():
 					time.sleep(0)
-			if not self.button_down.value() and not menu==2:
+			if not self.button_down.value() and not menu==3:
 				menu=menu+1
 				self.updatemenu(self, menu)
 				while not self.button_down.value():
@@ -54,6 +52,7 @@ class infrared_module(object):
 		return
 	
 	def updatemenu(self, menu):
+		self.display(self,"INFRARED", 0, True)
 		if menu == -1:
 			menu = 0
 		if menu == 0:
@@ -96,14 +95,14 @@ class infrared_module(object):
 				while True:
 					value = recvPin.ir_read()
 					if value:
-						self.display(self, "Saved", 1)
-						settings_module.addSetting("Save_"+str(settings_module.getSettingsLength()+1), value, "/modules/infrared/saved_ir")
-						
-						
+						name = "Save_"+str(settings_module.getSettingsLength("/modules/infrared/saved_ir")+1)
+						self.display(self, "Saved as "+name, 1)
+						settings_module.addSetting(name, value, "/modules/infrared/saved_ir")
 						time.sleep(1.5)
 						break
 					if not self.button_ok.value():
 						break
+				return
 			except Exception as e:
 				print(e)
 			return
@@ -118,8 +117,8 @@ class infrared_module(object):
 			if len(saved_ir_names) > 0:
 				menu3=1
 				self.display(self,"  Select  save  ", 0, True)
+				self.display(self, "                ", 1)
 				self.display(self,"> "+saved_ir_names[menu3-1][0:14], 1)
-				print("after")
 				time.sleep(0.5)
 				while True:
 					if menu3==1 and not self.button_up.value():
@@ -138,16 +137,56 @@ class infrared_module(object):
 							time.sleep(0)
 					if not self.button_ok.value():
 						nec = NEC(Pin(21, Pin.OUT, value = 0))
-						nec.transmit(1, int(saved_ir_values[menu3-1]))  # address == 1, data == 2
+						nec.transmit(0x1010, int(saved_ir_values[menu3-1]))  # address == 1, data == 2
+						recvPin = irGetCMD(15)
+						value = recvPin.ir_read()
+						if value:
+							print("value: "+value+" found! :p")
 						print("sent '"+str(saved_ir_names[menu3-1])+"' data: '"+str(saved_ir_values[menu3-1])+"'")
+						while not self.button_ok.value():
+							time.sleep(0)
+				return
 			else:
 				self.display(self,"No save avaiable", 0)
 				time.sleep(1)
-			return
 		if menu == 3:
-			self.lcd.clear()
-			self.display(self,"uwu2 ", 0)
-			self.display(self,"uwu2 ", 1)
+			tmp=settings_module.getSettingsList("/modules/infrared/saved_ir")
+			saved_ir_names = tmp[0]
+			saved_ir_values = tmp[1]
+			
+			print(str(saved_ir_names))
+			print(str(saved_ir_values))
+			
+			if len(saved_ir_names) > 0:
+				menu3=1
+				self.display(self,"  Delete  save  ", 0, True)
+				self.display(self, "                ", 1)
+				self.display(self,"> "+saved_ir_names[menu3-1][0:14], 1)
+				time.sleep(0.5)
+				while True:
+					if menu3==1 and not self.button_up.value():
+						break
+					if not self.button_down.value() and not menu3==len(saved_ir_names):
+						menu3=menu3+1
+						self.display(self,"                ", 1)
+						self.display(self,"> "+saved_ir_names[menu3-1][0:14], 1)
+						while not self.button_down.value():
+							time.sleep(0)
+					if not self.button_up.value() and not menu3==1:
+						menu3=menu3-1
+						self.display(self,"                ", 1)
+						self.display(self,"> "+saved_ir_names[menu3-1][0:14], 1)
+						while not self.button_up.value():
+							time.sleep(0)
+					if not self.button_ok.value():
+						settings_module.deleteSetting(saved_ir_names[menu3-1], "/modules/infrared/saved_ir")
+						self.display(self, "Deleted", 1)
+						print("deleted")
+						break
+				return
+			else:
+				self.display(self,"No save avaiable", 0)
+				time.sleep(1)
 	def display(self, text, line, middle=False, lastdisplay=lastdisplay2):
 		if middle:
 			self.lcd.move_to(int(8-len(text)/2), line)

@@ -1,0 +1,4 @@
+name: CLOCK
+classname: clock_module
+top: 0
+bottom: 0

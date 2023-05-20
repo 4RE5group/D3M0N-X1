@@ -1,25 +1,34 @@
-from machine import Pin, SoftSPI, I2C
+from machine import Pin, SoftSPI, I2C, ADC
 import time
 import micropython
+from I2C_LCD import I2CLcd
 from settings import settings_module
 
 
-class keyboard_module(object):
+class debug_module(object):
 	global lastdisplay2
 	lastdisplay2=""
 	
 	def __start__(self):
+    # define buttons
 		self.button_up = Pin(20, Pin.IN, Pin.PULL_UP)
 		self.button_ok = Pin(19, Pin.IN, Pin.PULL_UP)
 		self.button_down = Pin(18, Pin.IN, Pin.PULL_UP)
 		
+    # set first menu line
 		menu=0
+    
+    # connect to LCD display
 		i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)
 		devices = i2c.scan()
 		self.lcd = I2CLcd(i2c, 0x3f, 2, 16)
+    # clear display
 		self.lcd.clear()
 		
-		self.display(self,"KEYBOARD", 0, True)
+    # display EXAMPLE to first line, centred
+    # syntax: self.display(self,text, line(0 or 1), center?(True or False))
+		self.display(self,"DEBUG", 0, True)
+    # update menu in function of menu value
 		self.updatemenu(self, menu)
 		
 		while True:
@@ -43,29 +52,35 @@ class keyboard_module(object):
 		if menu == -1:
 			menu = 0
 		if menu == 0:
-			self.display(self," > keylogger    ", 1)
+			self.display(self," > Battery      ", 1)
 		if menu == 1:
-			self.display(self," > bad usb      ", 1)
+			self.display(self," > CPU temp     ", 1)
 		if menu == 2:
-			self.display(self," > other        ", 1)
+			self.display(self," > option3      ", 1)
 		if menu == 3:
 			menu = 4
 	
 	def selectoption(self, menu):
 		if menu == 0:
-			self.lcd.clear()
-			self.display(self,"keylogger", 0, True)
-			self.display(self,"press ok to stop", 1)
+			# get power
+			adc = ADC(Pin(26, mode=Pin.IN))
+			print(adc.read_u16())
+			self.display(self, "Battery", 0, True)
+			self.display(self, "5V, 1000mA", 1)
 		if menu == 1:
-			self.lcd.clear()
-			self.display(self,"bad usb", 0, True)
-			
+			# get temp C°
+			temp_sensor = ADC(4)
+			self.display(self, "CPU temp", 0, True)
+			time.sleep(0.5)
+			while self.button_ok.value():
+				adc_voltage = temp_sensor.read_u16() * 3.3 / 65535
+				cpu_temp = 27 - (adc_voltage - 0.706)/0.001721 # Formula given in RP2040 Datasheet
+				self.display(self, str(cpu_temp)[0:4]+"C°", 1)
+				time.sleep_ms(500)
 			return
 		if menu == 2:
-			self.lcd.clear()
-			self.display(self,"uwu2 ", 0)
-			self.display(self,"uwu2 ", 1)
-			
+			# put your third option script here
+			return
 	def display(self, text, line, middle=False, lastdisplay=lastdisplay2):
 		if middle:
 			self.lcd.move_to(int(8-len(text)/2), line)
@@ -74,6 +89,3 @@ class keyboard_module(object):
 		if text!=lastdisplay:
 			self.lcd.putstr(text)
 		lastdisplay=text
-
-
-

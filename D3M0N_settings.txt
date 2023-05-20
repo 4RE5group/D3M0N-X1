@@ -1,3 +1,7 @@
 ap_ssid: D3M0N-X1
 ap_password: changeme
 password_list: passwords.txt
+startup_time: 1
+web_address: 192.168.1.4
+web_port: 80
+web_path: /webserver

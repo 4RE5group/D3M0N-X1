@@ -1,2 +1,4 @@
 name: RFID
 classname: rfid_module
+top: 0
+bottom: 0

@@ -1,2 +1,4 @@
 name: KEYBOARD
 classname: keyboard_module
+top: 0
+bottom: 0
