@@ -1,6 +1,7 @@
 from machine import Pin, SoftSPI, I2C
 import time
 import micropython
+from I2C_LCD import I2CLcd
 from settings import settings_module
 
 
