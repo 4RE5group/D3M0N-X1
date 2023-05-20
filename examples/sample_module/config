@@ -1,2 +1,4 @@
 name: EXAMPLE
 classname: sample_module
+top: 0
+bottom: 0
