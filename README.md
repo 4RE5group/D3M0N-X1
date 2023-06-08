@@ -5,8 +5,15 @@
 # D3M0N-X1: the best mutifunctionnal hacking device
 
 # Summary
- - [hardware](https://github.com/DuckpvpTeam/D3M0N-X1#)
- - [update](https://github.com/DuckpvpTeam/D3M0N-X1#)
+ - [hardware](https://github.com/DuckpvpTeam/D3M0N-X1#hardware)
+ - [update](https://github.com/DuckpvpTeam/D3M0N-X1#update)
+ - [update](https://github.com/DuckpvpTeam/D3M0N-X1#update)
 
+
+# Hardware
+
+
+
+# Update
 
 
