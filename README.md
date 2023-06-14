@@ -1,3 +1,4 @@
+# ⚠️This repo isn't up to date ([new one](https://github.com/d3m0n-project/firmware))⚠️
 ![image](https://user-images.githubusercontent.com/71982379/235346406-b9676648-b80b-40e0-bded-d0422d257047.png)
 
 
